@@ -1,12 +1,14 @@
 package main
 
-import ("fmt")
+import (
+	"fmt"
+)
 
-type Las interface{
+type Las interface {
 	l(int) int
 }
 
-func main(){
+func main() {
 	var a Las
 	a = 5
 
@@ -15,7 +17,7 @@ func main(){
 
 type Luv int
 
-func (l Luv) l (v int) int{
+func (l Luv) l(v int) int {
 	fmt.Println(v)
 	return 5
 }

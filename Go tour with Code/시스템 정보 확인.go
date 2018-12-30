@@ -5,7 +5,7 @@ import (
 	"runtime"
 )
 
-func main(){
+func main() {
 	fmt.Println(runtime.GOOS)
 	fmt.Println(runtime.NumCPU())
 	fmt.Println(runtime.GOROOT())

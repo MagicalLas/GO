@@ -1,10 +1,11 @@
 package main
 
-import(
+import (
 	"fmt"
 )
-func main(){
+
+func main() {
 	q := "Las Desire wongo dev lizz"
-	var c = (q[1]) 
-	fmt.Printf("%c",c)
+	var c = (q[1])
+	fmt.Printf("%c", c)
 }
