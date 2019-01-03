@@ -2,98 +2,87 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"strings"
 )
+
+var connections [1024]*net.TCPConn
 
 func main() {
 	serverAddress := "0.0.0.0:4321"
 	address, _ := net.ResolveTCPAddr("tcp", serverAddress)
 	server, _ := net.ListenTCP("tcp4", address)
 	sendPipe := make(chan string)
+	userCount := 0
+	//	go printer(&sendPipe)
+	go sender(&sendPipe, &userCount)
 	for {
 		con, _ := server.AcceptTCP()
-		user := ResolveUser(con, "LasWonho")
-
-		go func() {
-			for {
-				data, err := user.ReadData()
-				if err != nil {
-					continue
-				}
-				sendPipe <- data
-			}
-		}()
-		for {
-			input, err := user.ReadData()
-			if err != nil {
-				continue
-			}
-			user.SendData(user.name + " : " + input + "\r\n")
-			println(user.name + " : " + input)
-			println("l")
-		}
+		connections[userCount] = con
+		name := getName(con)
+		go whileRecieve(&sendPipe, con, name, userCount)
+		userCount++
 	}
-
 }
-
-// User represents TCP connected users.
-type User struct {
-	sendBuffer [1024]byte
-	readBuffer [1024]byte
-	connection *net.TCPConn
-	name       string
-}
-
-// ResolveUser is make user object
-func ResolveUser(connection *net.TCPConn, name string) (user User) {
-	var bufferA [1024]byte
-	var bufferB [1024]byte
-	user = User{connection: connection, name: name, sendBuffer: bufferA, readBuffer: bufferB}
-	user.SendData("Input your name : ")
-	name, _ = user.ReadData()
-	user.ChangeName(name)
+func getName(connection *net.TCPConn) (name string) {
+	var buffer [1024]byte
+	length, _ := connection.Read(buffer[:])
+	nameString := string(buffer[0:length])
+	name = strings.Replace(nameString, "\r\n", "", -1)
+	bufferClear(&buffer)
 	return
 }
-
-// SendData is send string to User
-func (user *User) SendData(data string) (int, error) {
-
-	user.WriteBuffer(data)
-	count, err := user.connection.Write(user.sendBuffer[0:len(data)])
-	user.ClearBuffer(&user.sendBuffer)
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
-// WriteBuffer is writing buffer using string data
-func (user *User) WriteBuffer(data string) {
-	for i := range data {
-		user.sendBuffer[i] = data[i]
+func bufferClear(buffer *[1024]byte) {
+	for i := range *buffer {
+		(*buffer)[i] = 0
 	}
 }
-
-// ClearBuffer is user buffer set 0
-func (user *User) ClearBuffer(buffer *[1024]byte) {
-	for i := range buffer {
-		buffer[i] = 0
+func whileRecieve(pipe *chan string, connection *net.TCPConn, name string, me int) {
+	*pipe <- name + "님이 입장하셨습니다. 모두 환영해여~"
+	var buffer [1024]byte
+	for {
+		length, err := connection.Read(buffer[:])
+		if err != nil {
+			break
+		}
+		message, err := bufferChangeString(&buffer, length)
+		if err != nil {
+			continue
+		}
+		*pipe <- name + " : " + message
+	}
+	connections[me] = nil
+	*pipe <- name + "님이 나가셨습니다! 아쉽지만 다음에 뵈여?"
+}
+func bufferChangeString(buffer *[1024]byte, length int) (string, error) {
+	message := string((*buffer)[0:length])
+	if message == "\r\n" {
+		return "", errors.New("\r\n is not string")
+	}
+	return message, nil
+}
+func printer(pipe *chan string) {
+	for {
+		var data string
+		data = <-(*pipe)
+		fmt.Println(data)
 	}
 }
-
-// ChangeName is change user name
-func (user *User) ChangeName(name string) {
-	user.name = name
-}
-
-// ReadData is read data from tcp
-func (user *User) ReadData() (string, error) {
-	count, _ := user.connection.Read(user.readBuffer[0:])
-	result := string(user.readBuffer[0:count])
-	user.ClearBuffer(&user.readBuffer)
-	if result == "\r\n" {
-		println("this is shit")
-		return "", errors.New("Useless data")
+func sender(pipe *chan string, count *int) {
+	for {
+		data := <-*pipe
+		for i, e := range connections {
+			if e == nil {
+				continue
+			}
+			if i > *count {
+				break
+			}
+			sendData(e, data+"\r\n")
+		}
 	}
-	return result, nil
+}
+func sendData(connection *net.TCPConn, data string) {
+	connection.Write([]byte(data))
 }
