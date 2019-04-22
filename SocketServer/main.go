@@ -15,7 +15,7 @@ func main() {
 	server, _ := net.ListenTCP("tcp4", address)
 	sendPipe := make(chan string)
 	userCount := 0
-	//	go printer(&sendPipe)
+	//go printer(&sendPipe)
 	go sender(&sendPipe, &userCount)
 	for {
 		con, _ := server.AcceptTCP()
@@ -25,6 +25,7 @@ func main() {
 		userCount++
 	}
 }
+
 func getName(connection *net.TCPConn) (name string) {
 	var buffer [1024]byte
 	length, _ := connection.Read(buffer[:])
